@@ -6,6 +6,7 @@ import javax.imageio.ImageIO
 import java.awt.image.BufferedImage
 import javax.swing.ImageIcon
 import swing.event._
+import java.awt.event._
 import java.util.{Timer, TimerTask}
 import java.awt.{Graphics2D, Color}
 import java.awt.geom._
@@ -15,7 +16,13 @@ object TetrisApp extends SimpleSwingApplication {
   
   val image = ImageIO.read(new File("src/spritesheet.png")).getSubimage(0, 0, 32 * 17, 32 * 26)
   
+  def emptyImage(w: Int, h: Int) = {
+    new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB)
+  }
   
+  val frame = this.emptyImage(100, 100) // TODO
+  val g = frame.createGraphics()
+  g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
   
   
   val layouts: Map[String, Array[Array[Int]]] = {
@@ -53,11 +60,12 @@ object TetrisApp extends SimpleSwingApplication {
   
   
   
-  val grid = Array.ofDim[BufferedImage](17, 26)
+  val grid = Array.ofDim[BufferedImage](26, 17)
   
-  for(i <- 0 until 17) {
-    for(j <- 0 until 26) {
-      grid(i)(j) = image.getSubimage(i * 32, j * 32, 32, 32)
+  
+  for(i <- 0 until 26) {
+    for(j <- 0 until 17) {
+      grid(i)(j) = image.getSubimage(j * 32, i * 32, 32, 32)
     }
   }
   
@@ -66,35 +74,45 @@ object TetrisApp extends SimpleSwingApplication {
   
   var points = 0
   
+  
+  val g = image.createGraphics()
+
   def top = new MainFrame { 
     val pic = new Label { 
       icon = new ImageIcon(image)
-//      override def paintComponent(g: Graphics2D) = {
-//        g.drawImage(grid(0)(0), 0, 0, null)
-//      }
+      override def paintComponent(g: Graphics2D) = {
+        g.drawImage(image, 0, 0, null)
+      }
     }
     contents = new BoxPanel(Orientation.Vertical) {
       contents += pic
-    }
-    this.reactions += {
-      case KeyPressed(_, Key.A, _, _) => 
-          currentShape.moveLeft()
-          println("A pressed")
+      listenTo(keys, mouse.clicks)
+      reactions += {
+        case KeyPressed(_, Key.A, _, _) => 
+            currentShape.moveLeft()
+            currentShape.show(g)
         
-      case KeyPressed(_, Key.D, _, _) => 
-          currentShape.moveRight()
-          println("D pressed!")
+        case KeyPressed(_, Key.D, _, _) => 
+            currentShape.moveRight()
+            currentShape.show(g)
+        case KeyPressed(_, Key.E, _, _) =>
+            currentShape.rotate()
+            currentShape.show(g)
       
-      case mouseClicked: MouseClicked => 
-         println("Mouse clicked")
+        case mouseClicked: MouseClicked => 
+           println("Mouse clicked")
      
+      }
+      focusable = true
+      requestFocus
     }
-    listenTo(pic.mouse.clicks, pic.keys)
-    val g = image.createGraphics()
+//    val g = image.createGraphics()
+    var i = 1
     def startAnimating(interval: Int) = {
       val task = new TimerTask {
         def run() = {
-          currentShape.fall()
+          i += 1
+          if(i % 20 == 0) currentShape.fall()
           currentShape.show(g)
           pic.repaint()
         }
@@ -102,7 +120,7 @@ object TetrisApp extends SimpleSwingApplication {
       new Timer().schedule(task,0,interval)
     }
     
-    startAnimating(1000)
+    startAnimating(30)
   }
 
  
