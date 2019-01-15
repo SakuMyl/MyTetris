@@ -6,28 +6,36 @@ import java.awt.image.BufferedImage
 import swing.Component
 
 
-class Shape(val layout: Array[Array[Int]], image: BufferedImage) {
+class Shape(var layout: Array[Array[Int]], image: BufferedImage) {
   
   var x = 4
   
   var y = 0
   
   
-  def rotate = ???
+  def rotate() = {
+    this.layout = layout.transpose
+  }
+  
   
   def show(g: Graphics2D) = {
     for(row <- layout.indices) {
       for(square <- layout(row).indices) {
-        if(square == 1) {
-          g.drawImage(image, 32 * (x + row), 32 * (y + square), null)
+        if(layout(row)(square) == 1) {
+          println("x: " + square + " y: " + row)
+          g.drawImage(image, 32 * (x + square), 32 * (y + row), null)
         }
       }
     }
   }
+  println("changed")
   
   def moveLeft() = this.x -= 1 
   
-  def moveRight() = this.x += 1
+  def moveRight() = {
+    this.x += 1
+
+  }
   
   def fall() = this.y += 1
   
