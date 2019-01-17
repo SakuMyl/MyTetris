@@ -10,79 +10,83 @@ import java.awt.event._
 import java.util.{Timer, TimerTask}
 import java.awt.{Graphics2D, Color}
 import java.awt.geom._
+import java.awt.RenderingHints
+import scala.util.Random
 
 object TetrisApp extends SimpleSwingApplication {
   
   
-  val image = ImageIO.read(new File("src/spritesheet.png")).getSubimage(0, 0, 32 * 17, 32 * 26)
+  val image = ImageIO.read(new File("src/spritesheet.png"))
+  
+  val cropped = image.getSubimage(0, 0, 32 * 17, 32 * 26)
   
   def emptyImage(w: Int, h: Int) = {
     new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB)
   }
   
-  val frame = this.emptyImage(100, 100) // TODO
+  val frame = this.emptyImage(cropped.getWidth(), cropped.getHeight()) // TODO
   val g = frame.createGraphics()
   g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
   
   
-  val layouts: Map[String, Array[Array[Int]]] = {
+  val layoutMap: Map[String, Array[Array[Int]]] = {
     
-     Map("s" -> Array(Array(1,0,0),
-                      Array(1,1,0),
-                      Array(0,1,0)),
-                      
-         "z" -> Array(Array(0,1,0),
-                      Array(1,1,0),
-                      Array(1,0,0)),
-                      
-         "j" -> Array(Array(0,1,0),
+     Map("j" -> Array(Array(0,1,0),
                       Array(0,1,0),
                       Array(1,1,0)),
                       
-         "l" -> Array(Array(0,1,0),
-                      Array(0,1,0),
-                      Array(0,1,1)),
+         "i" -> Array(Array(0,1,0,0),
+                      Array(0,1,0,0),
+                      Array(0,1,0,0),
+                      Array(0,1,0,0)),
                       
-         "t" -> Array(Array(0,0,0),
-                      Array(1,1,1),
+         "s" -> Array(Array(1,0,0),
+                      Array(1,1,0),
                       Array(0,1,0)),
                       
          "o" -> Array(Array(1,1),
                       Array(1,1)),
                       
-         "i" -> Array(Array(0,1,0,0),
-                      Array(0,1,0,0),
-                      Array(0,1,0,0),
-                      Array(0,1,0,0))
+         "l" -> Array(Array(0,1,0),
+                      Array(0,1,0),
+                      Array(0,1,1)),
+                      
+         "z" -> Array(Array(0,1,0),
+                      Array(1,1,0),
+                      Array(1,0,0)),
+                      
+         "t" -> Array(Array(0,0,0),
+                      Array(1,1,1),
+                      Array(0,1,0))
+         
         )
               
   }
   
+  val layouts = Vector("j", "i", "s", "o", "l", "z", "t")
+ 
+  val grid = Array.ofDim[BufferedImage](image.getHeight(), image.getWidth())
   
   
-  val grid = Array.ofDim[BufferedImage](26, 17)
-  
-  
-  for(i <- 0 until 26) {
-    for(j <- 0 until 17) {
+  for(i <- 0 until image.getHeight() / 32) {
+    for(j <- 0 until image.getWidth() / 32) {
       grid(i)(j) = image.getSubimage(j * 32, i * 32, 32, 32)
     }
   }
   
-  var currentShape = new Shape(this.layouts("i"), grid(0)(0))
-  var nextShape = new Shape(this.layouts("l"), grid(0)(0))
+  var currentShape = newShape(Random.nextInt(7))
+//  var nextShape = new Shape(this.layouts(Random.nextInt(7)), grid(0)(0))
   
   var points = 0
   
   
-  val g = image.createGraphics()
 
   def top = new MainFrame { 
     val pic = new Label { 
-      icon = new ImageIcon(image)
-      override def paintComponent(g: Graphics2D) = {
-        g.drawImage(image, 0, 0, null)
-      }
+      icon = new ImageIcon(frame)
+//      override def paintComponent(g: Graphics2D) = {
+//        g.drawImage(image, 0, 0, null)
+//      }
     }
     contents = new BoxPanel(Orientation.Vertical) {
       contents += pic
@@ -113,6 +117,7 @@ object TetrisApp extends SimpleSwingApplication {
         def run() = {
           i += 1
           if(i % 20 == 0) currentShape.fall()
+          g.drawImage(cropped, 32, 0, null)
           currentShape.show(g)
           pic.repaint()
         }
@@ -126,9 +131,9 @@ object TetrisApp extends SimpleSwingApplication {
  
   var time = 0
   
-  def newShape() = {
-    currentShape = nextShape
-    nextShape = new Shape(this.layouts("j"), grid(0)(0))
+  def newShape(r: Int) = {
+//    currentShape = nextShape
+    new Shape(this.layoutMap(layouts(r)), grid(r)(0))
   }
 //  
 //  var lockedTiles = ???
