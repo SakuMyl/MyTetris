@@ -128,7 +128,7 @@ object TetrisApp extends SimpleSwingApplication {
     startAnimating(30)
   }
 
- 
+  println("Where's my coffee!?")
   var time = 0
   
   def newShape(r: Int) = {
