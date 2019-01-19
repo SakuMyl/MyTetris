@@ -16,9 +16,15 @@ import scala.util.Random
 object TetrisApp extends SimpleSwingApplication {
   
   
-  val image = ImageIO.read(new File("src/spritesheet.png"))
+  val image = ImageIO.read(new File("tetris/src/spritesheet.png"))
   
-  val cropped = image.getSubimage(0, 0, 32 * 17, 32 * 26)
+  val TileSize = 32
+  
+  val GridHeight = 23
+  
+  val GridWidth = 10
+  
+  val cropped = image.getSubimage(0, 0, TileSize * 17, TileSize * 26)
   
   def emptyImage(w: Int, h: Int) = {
     new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB)
@@ -68,14 +74,14 @@ object TetrisApp extends SimpleSwingApplication {
   val grid = Array.ofDim[BufferedImage](image.getHeight(), image.getWidth())
   
   
-  for(i <- 0 until image.getHeight() / 32) {
-    for(j <- 0 until image.getWidth() / 32) {
-      grid(i)(j) = image.getSubimage(j * 32, i * 32, 32, 32)
+  for(i <- 0 until image.getHeight() / TileSize) {
+    for(j <- 0 until image.getWidth() / TileSize) {
+      grid(i)(j) = image.getSubimage(j * TileSize, i * TileSize, TileSize, TileSize)
     }
   }
   
   var currentShape = newShape(Random.nextInt(7))
-//  var nextShape = new Shape(this.layouts(Random.nextInt(7)), grid(0)(0))
+  var nextShape = newShape(Random.nextInt(7))
   
   var points = 0
   
@@ -84,9 +90,6 @@ object TetrisApp extends SimpleSwingApplication {
   def top = new MainFrame { 
     val pic = new Label { 
       icon = new ImageIcon(frame)
-//      override def paintComponent(g: Graphics2D) = {
-//        g.drawImage(image, 0, 0, null)
-//      }
     }
     contents = new BoxPanel(Orientation.Vertical) {
       contents += pic
@@ -102,22 +105,26 @@ object TetrisApp extends SimpleSwingApplication {
         case KeyPressed(_, Key.E, _, _) =>
             currentShape.rotate()
             currentShape.show(g)
+        case KeyPressed(_, Key.S, _, _) =>
+            fallInterval = 1
+        case KeyReleased(_, Key.S, _, _) => 
+            fallInterval = 20
       
-        case mouseClicked: MouseClicked => 
-           println("Mouse clicked")
-     
       }
       focusable = true
       requestFocus
     }
-//    val g = image.createGraphics()
+    
+    var fallInterval = 20
     var i = 1
     def startAnimating(interval: Int) = {
       val task = new TimerTask {
         def run() = {
           i += 1
-          if(i % 20 == 0) currentShape.fall()
-          g.drawImage(cropped, 32, 0, null)
+          if(isLocked) lock()
+          if(i % fallInterval == 0) currentShape.fall()
+          g.drawImage(cropped, TileSize, 0, null)
+          drawLockedTiles()
           currentShape.show(g)
           pic.repaint()
         }
@@ -128,16 +135,39 @@ object TetrisApp extends SimpleSwingApplication {
     startAnimating(30)
   }
 
-  println("Found it")
+ 
   var time = 0
   
   def newShape(r: Int) = {
-//    currentShape = nextShape
     new Shape(this.layoutMap(layouts(r)), grid(r)(0))
   }
-//  
-//  var lockedTiles = ???
-//  
+  
+  var lockedTiles = Array.ofDim[Int](image.getHeight(), image.getWidth())
+  
+  
+  def drawLockedTiles() = {
+    lockedTiles.indices.foreach(y => lockedTiles(y).indices.foreach(x => 
+    if(lockedTiles(y)(x) == 1) g.drawImage(currentShape.image, TileSize * x, TileSize * y, null)))
+  }
+  
+  def isLocked = {
+    var res = false
+    currentShape.layout.indices.foreach(y => currentShape.layout(y).indices.foreach(x => 
+    if(currentShape.layout(y)(x) == 1 && this.lockedTiles(currentShape.y + y + 1)(currentShape.x + x) == 1 || isOnBoundary) res = true))
+    res
+  }
+  
+  def isOnBoundary = {
+    var res = false
+    for(y <- currentShape.layout.indices) {
+      for(x <- currentShape.layout(y).indices) {
+        if(currentShape.layout(y)(x) == 1 && currentShape.y + y >= GridHeight - 1) {
+          res = true
+        }
+      }
+    }
+    res
+  }
 //  def draw() = ???
 //  
 //  def show = ??? 
@@ -146,8 +176,18 @@ object TetrisApp extends SimpleSwingApplication {
 //  
 //  def awardPoints = ???
 //  
-//  def lock = ??? 
-//  
+  def lock() = {
+    for(y <- currentShape.layout.indices) {
+      for(x <- currentShape.layout(y).indices) {
+        if (currentShape.layout(y)(x) == 1) {
+        lockedTiles(currentShape.y + y)(currentShape.x + x) = 1
+        }
+      }
+    }
+    currentShape = nextShape
+    nextShape = newShape(Random.nextInt(7))
+  }
+  
 //  def hasEnded = ???
 //  
 //  

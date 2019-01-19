@@ -6,7 +6,7 @@ import java.awt.image.BufferedImage
 import swing.Component
 
 
-class Shape(var layout: Array[Array[Int]], image: BufferedImage) {
+class Shape(var layout: Array[Array[Int]], val image: BufferedImage) {
   
   var x = 4
   
@@ -15,26 +15,31 @@ class Shape(var layout: Array[Array[Int]], image: BufferedImage) {
   
   def rotate() = {
     this.layout = layout.transpose
+    var newLayout = this.layout
+//    layout.indices.foreach(row => newLayout(row) = this.layout(layout.size - row - 1))
+    this.layout = newLayout
   }
   
   
   def show(g: Graphics2D) = {
-    for(row <- layout.indices) {
-      for(square <- layout(row).indices) {
-        if(layout(row)(square) == 1) {
-          println("x: " + square + " y: " + row)
-          g.drawImage(image, 32 * (x + square), 32 * (y + row), null)
-        }
-      }
-    }
+    layout.indices.foreach(row => layout(row).indices.foreach(square => 
+    if(layout(row)(square) == 1) g.drawImage(image, 32 * (x + square), 32 * (y + row), null)))
+    println(x)
   }
-  println("changed")
   
-  def moveLeft() = this.x -= 1 
+  def moveLeft() = {
+    var canMove = true
+    this.layout.indices.foreach(y => this.layout(y).indices.foreach(x => 
+    if(this.x + x <= 2 && this.layout(y)(x) == 1) canMove = false))
+    if(canMove) this.x -= 1
+
+  }
   
   def moveRight() = {
-    this.x += 1
-
+    var canMove = true
+    this.layout.indices.foreach(y => this.layout(y).indices.foreach(x => 
+    if(this.x + x >= 11 && this.layout(y)(x) == 1) canMove = false))
+    if(canMove) this.x += 1
   }
   
   def fall() = this.y += 1

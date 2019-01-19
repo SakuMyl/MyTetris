@@ -2,7 +2,7 @@ package tetris
 import swing._
 
 
-class Tile(val color: Color) {
+class Tile(val image: Color) {
  
   
   val size = 32
