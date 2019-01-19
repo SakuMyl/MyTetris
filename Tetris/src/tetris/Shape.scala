@@ -15,7 +15,6 @@ class Shape(var layout: Array[Array[Int]], val image: BufferedImage) {
   
   def rotate() = {
     var newLayout = this.layout.transpose.map(_.reverse)
-    var canRotate = true
     newLayout.indices.foreach(y => newLayout(y).indices.foreach(x => 
     if(newLayout(y)(x) == 1) {
       if(this.x + x >= 11) this.x -= this.x + x - 11
