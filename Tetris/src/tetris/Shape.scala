@@ -1,9 +1,7 @@
 package tetris
 
-import java.awt.{Graphics2D, Color}
-import java.awt.geom._
+import java.awt.Graphics2D
 import java.awt.image.BufferedImage
-import swing.Component
 
 
 class Shape(var layout: Array[Array[Int]], val image: BufferedImage) {
@@ -12,8 +10,9 @@ class Shape(var layout: Array[Array[Int]], val image: BufferedImage) {
   
   var y = 0
   
-  var tileLayout = Array.ofDim[Tile](layout.size, layout.size)
+//  var tileLayout = Array.ofDim[Tile](layout.size, layout.size)
   
+//  layout.indices.foreach(y => layout(y).indices.foreach(x => tileLayout(y)(x) = new Tile(image, this.x + x, this.y + y)))
   
   def rotate() = {
     var newLayout = this.layout.transpose.map(_.reverse)
@@ -32,18 +31,19 @@ class Shape(var layout: Array[Array[Int]], val image: BufferedImage) {
   }
   
   def moveLeft() = {
-    var canMove = true
-    this.layout.indices.foreach(y => this.layout(y).indices.foreach(x => 
-    if(this.x + x <= 2 && this.layout(y)(x) == 1) canMove = false))
-    if(canMove) this.x -= 1
-
+//    var canMove = true
+//    this.layout.indices.foreach(y => this.layout(y).indices.foreach(x => 
+//    if(this.x + x <= 2 && this.layout(y)(x) == 1) canMove = false))
+//    if(canMove) this.x -= 1
+    this.x -= 1
   }
   
   def moveRight() = {
-    var canMove = true
-    this.layout.indices.foreach(y => this.layout(y).indices.foreach(x => 
-    if(this.x + x >= 11 && this.layout(y)(x) == 1) canMove = false))
-    if(canMove) this.x += 1
+//    var canMove = true
+//    this.layout.indices.foreach(y => this.layout(y).indices.foreach(x => 
+//    if(this.x + x >= 11 && this.layout(y)(x) == 1) canMove = false))
+//    if(canMove) this.x += 1
+    this.x += 1
   }
   
   def fall() = this.y += 1
