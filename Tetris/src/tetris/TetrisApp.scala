@@ -80,8 +80,9 @@ object TetrisApp extends SimpleSwingApplication {
     }
   }
   
-  var currentShape = newShape(Random.nextInt(7))
-  var nextShape = newShape(Random.nextInt(7))
+  var currentShape = newShape()
+
+  var holdShape: Option[Shape] = None
   
   var points = 0
   
@@ -109,6 +110,8 @@ object TetrisApp extends SimpleSwingApplication {
             fallInterval = 1
         case KeyReleased(_, Key.S, _, _) => 
             fallInterval = 20
+        case KeyPressed(_, Key.Q, _, _) =>
+            hold()
       
       }
       focusable = true
@@ -138,16 +141,17 @@ object TetrisApp extends SimpleSwingApplication {
  
   var time = 0
   
-  def newShape(r: Int) = {
+  def newShape() = {
+    val r = Random.nextInt(7)
     new Shape(this.layoutMap(layouts(r)), grid(r)(0))
   }
   
   var lockedTiles = Array.ofDim[Int](image.getHeight(), image.getWidth())
   
+  var lockedShapes = Vector[Shape]()
   
   def drawLockedTiles() = {
-    lockedTiles.indices.foreach(y => lockedTiles(y).indices.foreach(x => 
-    if(lockedTiles(y)(x) == 1) g.drawImage(currentShape.image, TileSize * x, TileSize * y, null)))
+    lockedShapes.foreach(_.show(g))
   }
   
   def isLocked = {
@@ -168,15 +172,22 @@ object TetrisApp extends SimpleSwingApplication {
     }
     res
   }
-//  def draw() = ???
-//  
-//  def show = ??? 
-//  
-//  def hold = ???
-//  
-//  def awardPoints = ???
-//  
+  
+  def hold() = { //TODO
+    val temp = currentShape
+    holdShape match {
+      case Some(shape) => currentShape = shape
+      case None => currentShape = newShape()
+    }
+    holdShape = Some(temp)
+  }
+  
+  def awardPoints = ???
+  
+  def deleteRows = ???
+  
   def lock() = {
+    lockedShapes = lockedShapes ++: Vector(currentShape)
     for(y <- currentShape.layout.indices) {
       for(x <- currentShape.layout(y).indices) {
         if (currentShape.layout(y)(x) == 1) {
@@ -184,13 +195,12 @@ object TetrisApp extends SimpleSwingApplication {
         }
       }
     }
-    currentShape = nextShape
-    nextShape = newShape(Random.nextInt(7))
+    currentShape = newShape()
   }
   
-//  def hasEnded = ???
-//  
-//  
+  def hasEnded = ???
+  
+  
   
              
   

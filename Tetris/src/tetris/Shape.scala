@@ -8,9 +8,11 @@ import swing.Component
 
 class Shape(var layout: Array[Array[Int]], val image: BufferedImage) {
   
-  var x = 4
+  var x = 5
   
   var y = 0
+  
+  var tileLayout = Array.ofDim[Tile](layout.size, layout.size)
   
   
   def rotate() = {
@@ -26,7 +28,7 @@ class Shape(var layout: Array[Array[Int]], val image: BufferedImage) {
   
   def show(g: Graphics2D) = {
     layout.indices.foreach(row => layout(row).indices.foreach(square => 
-    if(layout(row)(square) == 1) g.drawImage(image, 32 * (x + square), 32 * (y + row), null)))
+    if(layout(row)(square) == 1 && this.y + row <= 22) g.drawImage(image, 32 * (x + square), 32 * (y + row), null)))
   }
   
   def moveLeft() = {
