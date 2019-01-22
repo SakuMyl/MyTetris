@@ -12,6 +12,7 @@ import java.awt.{Graphics2D, Color}
 import java.awt.geom._
 import java.awt.RenderingHints
 import scala.util.Random
+import java.awt.Font
 
 object TetrisApp extends SimpleSwingApplication {
   
@@ -24,17 +25,24 @@ object TetrisApp extends SimpleSwingApplication {
   
   val GridWidth = 10
   
+  var level = 1
+  
   private var score = 0
   
-  val cropped = image.getSubimage(0, 0, TileSize * 17, TileSize * 26)
+  val cropped = image.getSubimage(32, 0, TileSize * 17, TileSize * 26)
   
   def emptyImage(w: Int, h: Int) = {
     new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB)
   }
   
+  val gameOverImage = image.getSubimage(0, TileSize * GridHeight, TileSize * 9, TileSize * 2)
+  
+  val coverImage = image.getSubimage(TileSize * 10, TileSize * GridHeight, TileSize * 9, TileSize * 2)
+  
   val frame = this.emptyImage(cropped.getWidth(), cropped.getHeight()) // TODO
   val g = frame.createGraphics()
   g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+  g.setFont(new Font("Tetris Font", 0, 30))
   
   
   val layoutMap: Map[String, Array[Array[Int]]] = {
@@ -83,13 +91,13 @@ object TetrisApp extends SimpleSwingApplication {
   }
   
   var currentShape = newShape()
+  
+  var nextShape = newShape()
 
   var holdShape: Option[Shape] = None
   
-  var points = 0
-  
-  
 
+  //Creates the app window and the background on which the graphics will be drawn
   def top = new MainFrame { 
     val pic = new Label { 
       icon = new ImageIcon(frame)
@@ -97,6 +105,8 @@ object TetrisApp extends SimpleSwingApplication {
     contents = new BoxPanel(Orientation.Vertical) {
       contents += pic
       listenTo(keys, mouse.clicks)
+      
+      //Event listeners for game controls 
       reactions += {
         case KeyPressed(_, Key.A, _, _) => 
             if(canMoveLeft) currentShape.moveLeft()
@@ -105,15 +115,19 @@ object TetrisApp extends SimpleSwingApplication {
         case KeyPressed(_, Key.D, _, _) => 
             if(canMoveRight) currentShape.moveRight()
             currentShape.show(g)
-        case KeyPressed(_, Key.E, _, _) =>
+        case KeyPressed(_, Key.W, _, _) =>
             currentShape.rotate()
             currentShape.show(g)
         case KeyPressed(_, Key.S, _, _) =>
-            fallInterval = 1
+            fallInterval = 2
         case KeyReleased(_, Key.S, _, _) => 
-            fallInterval = 20
+            fallInterval = 48
         case KeyPressed(_, Key.Q, _, _) =>
             hold()
+        case KeyPressed(_, Key.Space, _, _) => 
+            while(!isLocked) {
+              currentShape.fall()
+            }
       
       }
       focusable = true
@@ -121,7 +135,7 @@ object TetrisApp extends SimpleSwingApplication {
     }
     
     val timer = new Timer()
-    var fallInterval = 20
+    var fallInterval = 48
     var i = 1
     def startAnimating(interval: Int) = {
       val task = new TimerTask {
@@ -131,7 +145,12 @@ object TetrisApp extends SimpleSwingApplication {
           if(isLocked) lock()
           if(i % fallInterval == 0) currentShape.fall()
           g.drawImage(cropped, TileSize, 0, null)
+          g.translate((TileSize * (8.5 - nextShape.centerPoint._1)).toInt, (TileSize * (3.5 - nextShape.centerPoint._2)).toInt)
+          nextShape.show(g)
+          g.translate((-TileSize * (8.5 - nextShape.centerPoint._1)).toInt, (-TileSize * (3.5 - nextShape.centerPoint._2)).toInt)
           drawLockedTiles()
+          g.drawImage(coverImage, TileSize * 9, TileSize * GridHeight, null)
+          g.drawString(score.toString, 32 * 14 - score.toString.length * 8, 32 * 9)
           currentShape.show(g)
           pic.repaint()
         }
@@ -139,7 +158,7 @@ object TetrisApp extends SimpleSwingApplication {
       timer.schedule(task,0,interval)
     }
     
-    startAnimating(30)
+    startAnimating(32)
   }
 
  
@@ -154,38 +173,40 @@ object TetrisApp extends SimpleSwingApplication {
   
   var lockedImages = Vector[Tile]()
   
-  var lockedShapes = Vector[Shape]()
   
+  //Draws all the tiles that have been played and haven't been removed
   def drawLockedTiles() = {
     lockedImages.foreach(tile => if(tile.isInstanceOf[Tile]) tile.show(g))
   }
   
+  
+  //Moves the block to the left
   def canMoveLeft = {
     currentShape.layout.indices.forall(y => currentShape.layout(y).indices.forall(x => 
-    (currentShape.x + x > 2 && !this.lockedImages.exists(tile => tile.x == currentShape.x + x - 1 && tile.y == currentShape.y + y)) || currentShape.layout(y)(x) == 0))
+    (currentShape.x + x > 1 && !this.lockedImages.exists(tile => tile.x == currentShape.x + x - 1 && tile.y == currentShape.y + y)) || currentShape.layout(y)(x) == 0))
   }
   
+  //Moves the block to the right
   def canMoveRight = {
     currentShape.layout.indices.forall(y => currentShape.layout(y).indices.forall(x => 
-    (currentShape.x + x < 11 && !this.lockedImages.exists(tile => tile.x == currentShape.x + x + 1 && tile.y == currentShape.y + y)) || currentShape.layout(y)(x) == 0))
+    (currentShape.x + x < 10 && !this.lockedImages.exists(tile => tile.x == currentShape.x + x + 1 && tile.y == currentShape.y + y)) || currentShape.layout(y)(x) == 0))
   }
+  
+  //Determines whether there is the bottom or other tiles below the block
   def isLocked = {
     currentShape.layout.indices.exists(y => currentShape.layout(y).indices.exists(x => 
     (currentShape.layout(y)(x) == 1 && this.lockedImages.exists(tile => tile.x == currentShape.x + x && tile.y == currentShape.y + y + 1)) || isOnBoundary))
   }
   
+  //Determines whether the block touches the bottom
   def isOnBoundary = {
-    var res = false
-    for(y <- currentShape.layout.indices) {
-      for(x <- currentShape.layout(y).indices) {
-        if(currentShape.layout(y)(x) == 1 && currentShape.y + y >= GridHeight - 1) {
-          res = true
-        }
-      }
-    }
-    res
+    currentShape.layout.indices.exists(y => currentShape.layout(y).indices.exists(x => 
+      currentShape.layout(y)(x) == 1 && currentShape.y + y >= GridHeight - 1))
   }
   
+  
+  //Holds the current block and gives the player the block that is 
+  //currently in hold or a new shape if there's not a block in hold yet.
   def hold() = { 
     val temp = currentShape
     holdShape match {
@@ -197,8 +218,19 @@ object TetrisApp extends SimpleSwingApplication {
     holdShape = Some(temp)
   }
   
-  def awardPoints = ???
+  //Gives the player points for removing rows.
+  def awardPoints(n: Int) = {
+    val points = n match {
+      case 1 => 40
+      case 2 => 100 
+      case 3 => 300
+      case 4 => 1200
+    }
+    this.score += points * level
+  }
   
+  
+  //Removes a row at a given height and moves the rows above the removed row down.
   def deleteRows(y: Int) = {
     this.lockedImages.foreach(tile => 
       if(tile.y == y) {
@@ -207,22 +239,29 @@ object TetrisApp extends SimpleSwingApplication {
       } else if(tile.y < y) tile.y += 1)
   }
   
+  //Locks the current block and activates the next one.
   def lock() = {
-    lockedShapes = lockedShapes ++: Vector(currentShape)
+//    lockedShapes = lockedShapes :+ currentShape
+    var rowsRemoved = 0
     for(y <- currentShape.layout.indices) {
       for(x <- currentShape.layout(y).indices) {
         if (currentShape.layout(y)(x) == 1) {
-        lockedImages = lockedImages ++: Vector(new Tile(currentShape.image, currentShape.x + x, currentShape.y + y))
-        lockedTiles(currentShape.y + y)(currentShape.x + x) = 1
-//        lockedImages.indices.foreach(row => if (lockedImages(row).indices.forall(tile => 
-//          lockedImages(row)(tile).isInstanceOf[Tile] || tile > 11 || tile < 2)) deleteRows(row)) 
-        if(lockedImages.filter(_.y == lockedImages.last.y).size == 10) deleteRows(lockedImages.last.y)
+          lockedImages = lockedImages ++: Vector(new Tile(currentShape.image, currentShape.x + x, currentShape.y + y))
+          lockedTiles(currentShape.y + y)(currentShape.x + x) = 1
+          if(lockedImages.filter(_.y == lockedImages.last.y).size == 10) {
+            rowsRemoved += 1
+            deleteRows(lockedImages.last.y)
+          }
         }
       }
     }
-    currentShape = newShape()
+    if(rowsRemoved != 0) awardPoints(rowsRemoved)
+    currentShape = nextShape
+    nextShape = newShape()
   }
   
+  //Determines whether there is a block that has a tile 
+  //touching the ceiling i.e. whether the game has ended
   def hasEnded = {
     lockedImages.exists(_.y <= 0)
   }
