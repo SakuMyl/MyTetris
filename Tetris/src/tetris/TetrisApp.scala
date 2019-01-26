@@ -81,14 +81,6 @@ object TetrisApp extends SimpleSwingApplication {
   
   val layouts = Vector("j", "i", "s", "o", "l", "z", "t")
  
-  val grid = Array.ofDim[BufferedImage](image.getHeight(), image.getWidth())
-  
-  
-  for(i <- 0 until image.getHeight() / TileSize) {
-    for(j <- 0 until image.getWidth() / TileSize) {
-      grid(i)(j) = image.getSubimage(j * TileSize, i * TileSize, TileSize, TileSize)
-    }
-  }
   
   var currentShape = newShape()
   
@@ -109,11 +101,11 @@ object TetrisApp extends SimpleSwingApplication {
       //Event listeners for game controls 
       reactions += {
         case KeyPressed(_, Key.A, _, _) => 
-            if(canMoveLeft) currentShape.moveLeft()
+            currentShape.moveLeft()
             currentShape.show(g)
         
         case KeyPressed(_, Key.D, _, _) => 
-            if(canMoveRight) currentShape.moveRight()
+            currentShape.moveRight()
             currentShape.show(g)
         case KeyPressed(_, Key.W, _, _) =>
             currentShape.rotate()
@@ -125,7 +117,7 @@ object TetrisApp extends SimpleSwingApplication {
         case KeyPressed(_, Key.Q, _, _) =>
             hold()
         case KeyPressed(_, Key.Space, _, _) => 
-            while(!isLocked) {
+            while(!currentShape.isLocked) {
               currentShape.fall()
             }
       
@@ -142,7 +134,7 @@ object TetrisApp extends SimpleSwingApplication {
         def run() = {
           if(hasEnded) timer.cancel()
           i += 1
-          if(isLocked) lock()
+          if(currentShape.isLocked) lock()
           if(i % fallInterval == 0) currentShape.fall()
           g.drawImage(cropped, TileSize, 0, null)
           g.translate((TileSize * (8.5 - nextShape.centerPoint._1)).toInt, (TileSize * (3.5 - nextShape.centerPoint._2)).toInt)
@@ -166,7 +158,7 @@ object TetrisApp extends SimpleSwingApplication {
   
   def newShape() = {
     val r = Random.nextInt(7)
-    new Shape(this.layoutMap(layouts(r)), grid(r)(0))
+    new Shape(this.layoutMap(layouts(r)), image.getSubimage(0, r * TileSize, TileSize, TileSize))
   }
   
   var lockedTiles = Array.ofDim[Int](image.getHeight(), image.getWidth())
@@ -180,30 +172,6 @@ object TetrisApp extends SimpleSwingApplication {
   }
   
   
-  //Moves the block to the left
-  def canMoveLeft = {
-    currentShape.layout.indices.forall(y => currentShape.layout(y).indices.forall(x => 
-    (currentShape.x + x > 1 && !this.lockedImages.exists(tile => tile.x == currentShape.x + x - 1 && tile.y == currentShape.y + y)) || currentShape.layout(y)(x) == 0))
-  }
-  
-  //Moves the block to the right
-  def canMoveRight = {
-    currentShape.layout.indices.forall(y => currentShape.layout(y).indices.forall(x => 
-    (currentShape.x + x < 10 && !this.lockedImages.exists(tile => tile.x == currentShape.x + x + 1 && tile.y == currentShape.y + y)) || currentShape.layout(y)(x) == 0))
-  }
-  
-  //Determines whether there is the bottom or other tiles below the block
-  def isLocked = {
-    currentShape.layout.indices.exists(y => currentShape.layout(y).indices.exists(x => 
-    (currentShape.layout(y)(x) == 1 && this.lockedImages.exists(tile => tile.x == currentShape.x + x && tile.y == currentShape.y + y + 1)) || isOnBoundary))
-  }
-  
-  //Determines whether the block touches the bottom
-  def isOnBoundary = {
-    currentShape.layout.indices.exists(y => currentShape.layout(y).indices.exists(x => 
-      currentShape.layout(y)(x) == 1 && currentShape.y + y >= GridHeight - 1))
-  }
-  
   
   //Holds the current block and gives the player the block that is 
   //currently in hold or a new shape if there's not a block in hold yet.
@@ -213,7 +181,7 @@ object TetrisApp extends SimpleSwingApplication {
       case Some(shape) => currentShape = shape
       case None => currentShape = newShape()
     }
-    currentShape.x = temp.x
+    currentShape.x = math.max(1 + temp.leftSide - currentShape.leftSide, math.min(temp.x, temp.x + temp.rightSide - currentShape.rightSide))
     currentShape.y = temp.y
     holdShape = Some(temp)
   }
@@ -232,29 +200,27 @@ object TetrisApp extends SimpleSwingApplication {
   
   //Removes a row at a given height and moves the rows above the removed row down.
   def deleteRows(y: Int) = {
-    this.lockedImages.foreach(tile => 
+    this.lockedImages.foreach{ tile => 
       if(tile.y == y) {
         lockedImages = lockedImages.filterNot(_ == tile)
         lockedTiles(tile.y)(tile.x) = 1
-      } else if(tile.y < y) tile.y += 1)
+      } else if(tile.y < y) tile.y += 1
+    }
   }
   
   //Locks the current block and activates the next one.
   def lock() = {
-//    lockedShapes = lockedShapes :+ currentShape
     var rowsRemoved = 0
-    for(y <- currentShape.layout.indices) {
-      for(x <- currentShape.layout(y).indices) {
-        if (currentShape.layout(y)(x) == 1) {
-          lockedImages = lockedImages ++: Vector(new Tile(currentShape.image, currentShape.x + x, currentShape.y + y))
-          lockedTiles(currentShape.y + y)(currentShape.x + x) = 1
-          if(lockedImages.filter(_.y == lockedImages.last.y).size == 10) {
-            rowsRemoved += 1
-            deleteRows(lockedImages.last.y)
-          }
+    currentShape.layout.indices.foreach{ y => currentShape.layout(y).indices.foreach {x => 
+      if (currentShape.layout(y)(x) == 1) {
+        lockedImages = lockedImages ++: Vector(new Tile(currentShape.image, currentShape.x + x, currentShape.y + y))
+        lockedTiles(currentShape.y + y)(currentShape.x + x) = 1
+        if(lockedImages.filter(_.y == lockedImages.last.y).size == 10) {
+          rowsRemoved += 1
+          deleteRows(lockedImages.last.y)
         }
       }
-    }
+    }}
     if(rowsRemoved != 0) awardPoints(rowsRemoved)
     currentShape = nextShape
     nextShape = newShape()
