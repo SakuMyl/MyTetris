@@ -16,24 +16,28 @@ import java.awt.Font
 
 object TetrisApp extends SimpleSwingApplication {
   
-  
+  //Spritesheet for the background and tiles
   val image = ImageIO.read(new File("tetris/src/spritesheet.png"))
   
+  //Height and width of a single tile on the grid
   val TileSize = 32
   
   val GridHeight = 23
   
   val GridWidth = 10
   
+  //The level affects how fast blocks fall and how many points are awarded for removing rows.
   def level = 1 + rowsRemoved / 10
   
+  
+  //Number of rows removed during a single game
   var rowsRemoved = 0
   
   
-  
+  //Determines the interval at which a block should fall. The smaller the interval, the quicker a block falls.
   def fallingSpeed = {
     if(level <= 9) {
-      48 - level * 5
+      53 - level * 5
     } else if(level == 10) {
       6
     } else if(level <= 13) {
@@ -51,23 +55,25 @@ object TetrisApp extends SimpleSwingApplication {
   
   private var score = 0
   
+  //The background which will be drawn during the game.
   val cropped = image.getSubimage(32, 0, TileSize * 17, TileSize * 23)
+  
+  //Background with the "game over" text used when the game is lost.
   val withGameOver = image.getSubimage(32, 0, TileSize * 17, TileSize * 26)
+  
+  val gameOverImage = image.getSubimage(0, GridHeight * TileSize, TileSize * 9, TileSize * 3)
   
   def emptyImage(w: Int, h: Int) = {
     new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB)
   }
   
-  val gameOverImage = image.getSubimage(0, TileSize * GridHeight, TileSize * 9, TileSize * 2)
-  
-  val coverImage = image.getSubimage(TileSize * 10, TileSize * GridHeight, TileSize * 9, TileSize * 2)
-  
+  //Graphics for the game
   val frame = this.emptyImage(withGameOver.getWidth(), withGameOver.getHeight()) // TODO
   val g = frame.createGraphics()
   g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
   g.setFont(new Font("Tetris Font", 10, 30))
   
-  
+  //Layouts for all kinds of possible shapes
   val layoutMap: Map[String, Array[Array[Int]]] = {
     
      Map("j" -> Array(Array(1,0,0),
@@ -101,7 +107,7 @@ object TetrisApp extends SimpleSwingApplication {
         )
               
   }
-  
+  //This is used to easily choose an appropriate shape when a new shape is created.
   val layouts = Vector("j", "i", "s", "o", "l", "z", "t")
  
   
@@ -230,6 +236,7 @@ object TetrisApp extends SimpleSwingApplication {
       case 4 => 1200
     }
     this.score += points * level
+    this.rowsRemoved += n
   }
   
   
@@ -257,7 +264,6 @@ object TetrisApp extends SimpleSwingApplication {
       }
     }}
     if(rows != 0) awardPoints(rows)
-    this.rowsRemoved += rows
     currentShape = nextShape
     if(lockedImages.exists(tile => tile.y <= 1 && (tile.x <= 5 + currentShape.layout.size || tile.x >= 5))) {
       currentShape.y = -1
