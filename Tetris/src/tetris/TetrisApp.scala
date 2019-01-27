@@ -25,11 +25,34 @@ object TetrisApp extends SimpleSwingApplication {
   
   val GridWidth = 10
   
-  var level = 1
+  def level = 1 + rowsRemoved / 10
+  
+  var rowsRemoved = 0
+  
+  
+  
+  def fallingSpeed = {
+    if(level <= 9) {
+      48 - level * 5
+    } else if(level == 10) {
+      6
+    } else if(level <= 13) {
+      5
+    } else if(level <= 16) {
+      4
+    } else if(level <= 19) {
+      3
+    } else if(level <= 29) {
+      2
+    } else {
+      1
+    }
+  }
   
   private var score = 0
   
-  val cropped = image.getSubimage(32, 0, TileSize * 17, TileSize * 26)
+  val cropped = image.getSubimage(32, 0, TileSize * 17, TileSize * 23)
+  val withGameOver = image.getSubimage(32, 0, TileSize * 17, TileSize * 26)
   
   def emptyImage(w: Int, h: Int) = {
     new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB)
@@ -39,41 +62,41 @@ object TetrisApp extends SimpleSwingApplication {
   
   val coverImage = image.getSubimage(TileSize * 10, TileSize * GridHeight, TileSize * 9, TileSize * 2)
   
-  val frame = this.emptyImage(cropped.getWidth(), cropped.getHeight()) // TODO
+  val frame = this.emptyImage(withGameOver.getWidth(), withGameOver.getHeight()) // TODO
   val g = frame.createGraphics()
   g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-  g.setFont(new Font("Tetris Font", 0, 30))
+  g.setFont(new Font("Tetris Font", 10, 30))
   
   
   val layoutMap: Map[String, Array[Array[Int]]] = {
     
-     Map("j" -> Array(Array(0,1,0),
-                      Array(0,1,0),
-                      Array(1,1,0)),
+     Map("j" -> Array(Array(1,0,0),
+                      Array(1,1,1),
+                      Array(0,0,0)),
                       
-         "i" -> Array(Array(0,1,0,0),
-                      Array(0,1,0,0),
-                      Array(0,1,0,0),
-                      Array(0,1,0,0)),
+         "i" -> Array(Array(0,0,0,0),
+                      Array(1,1,1,1),
+                      Array(0,0,0,0),
+                      Array(0,0,0,0)),
                       
-         "s" -> Array(Array(1,0,0),
+         "s" -> Array(Array(0,1,1),
                       Array(1,1,0),
-                      Array(0,1,0)),
+                      Array(0,0,0)),
                       
          "o" -> Array(Array(1,1),
                       Array(1,1)),
                       
-         "l" -> Array(Array(0,1,0),
-                      Array(0,1,0),
-                      Array(0,1,1)),
-                      
-         "z" -> Array(Array(0,1,0),
-                      Array(1,1,0),
-                      Array(1,0,0)),
-                      
-         "t" -> Array(Array(0,0,0),
+         "l" -> Array(Array(0,0,1),
                       Array(1,1,1),
-                      Array(0,1,0))
+                      Array(0,0,0)),
+                      
+         "z" -> Array(Array(1,1,0),
+                      Array(0,1,1),
+                      Array(0,0,0)),
+                      
+         "t" -> Array(Array(0,1,0),
+                      Array(1,1,1),
+                      Array(0,0,0))
          
         )
               
@@ -111,14 +134,21 @@ object TetrisApp extends SimpleSwingApplication {
             currentShape.rotate()
             currentShape.show(g)
         case KeyPressed(_, Key.S, _, _) =>
-            fallInterval = 2
+            fallInterval = 1
         case KeyReleased(_, Key.S, _, _) => 
-            fallInterval = 48
+            fallInterval = fallingSpeed
         case KeyPressed(_, Key.Q, _, _) =>
             hold()
         case KeyPressed(_, Key.Space, _, _) => 
             while(!currentShape.isLocked) {
               currentShape.fall()
+            }
+            lock()
+        case KeyPressed(_, _, _, _) => 
+            if(hasEnded) {
+              restart()
+              timer = new Timer()
+              startAnimating(32)
             }
       
       }
@@ -126,24 +156,30 @@ object TetrisApp extends SimpleSwingApplication {
       requestFocus
     }
     
-    val timer = new Timer()
-    var fallInterval = 48
+    var timer = new Timer()
+    var fallInterval = fallingSpeed
     var i = 1
     def startAnimating(interval: Int) = {
       val task = new TimerTask {
         def run() = {
-          if(hasEnded) timer.cancel()
+          if(hasEnded) {
+            g.drawImage(gameOverImage, TileSize, GridHeight * TileSize, null)
+            timer.cancel()
+          } else {
+            g.drawImage(cropped, TileSize, 0, null)
+            currentShape.show(g)
+          }
           i += 1
-          if(currentShape.isLocked) lock()
-          if(i % fallInterval == 0) currentShape.fall()
-          g.drawImage(cropped, TileSize, 0, null)
+          if(i % fallInterval == 0) {
+            if(currentShape.isLocked) lock()
+            else currentShape.fall()
+          }
           g.translate((TileSize * (8.5 - nextShape.centerPoint._1)).toInt, (TileSize * (3.5 - nextShape.centerPoint._2)).toInt)
           nextShape.show(g)
           g.translate((-TileSize * (8.5 - nextShape.centerPoint._1)).toInt, (-TileSize * (3.5 - nextShape.centerPoint._2)).toInt)
           drawLockedTiles()
-          g.drawImage(coverImage, TileSize * 9, TileSize * GridHeight, null)
           g.drawString(score.toString, 32 * 14 - score.toString.length * 8, 32 * 9)
-          currentShape.show(g)
+          g.drawString(level.toString, 32 * 14 - level.toString.length * 8, 32 * 14)
           pic.repaint()
         }
       }
@@ -154,7 +190,6 @@ object TetrisApp extends SimpleSwingApplication {
   }
 
  
-  var time = 0
   
   def newShape() = {
     val r = Random.nextInt(7)
@@ -210,28 +245,41 @@ object TetrisApp extends SimpleSwingApplication {
   
   //Locks the current block and activates the next one.
   def lock() = {
-    var rowsRemoved = 0
+    var rows = 0
     currentShape.layout.indices.foreach{ y => currentShape.layout(y).indices.foreach {x => 
       if (currentShape.layout(y)(x) == 1) {
         lockedImages = lockedImages ++: Vector(new Tile(currentShape.image, currentShape.x + x, currentShape.y + y))
         lockedTiles(currentShape.y + y)(currentShape.x + x) = 1
         if(lockedImages.filter(_.y == lockedImages.last.y).size == 10) {
-          rowsRemoved += 1
+          rows += 1
           deleteRows(lockedImages.last.y)
         }
       }
     }}
-    if(rowsRemoved != 0) awardPoints(rowsRemoved)
+    if(rows != 0) awardPoints(rows)
+    this.rowsRemoved += rows
     currentShape = nextShape
+    if(lockedImages.exists(tile => tile.y <= 1 && (tile.x <= 5 + currentShape.layout.size || tile.x >= 5))) {
+      currentShape.y = -1
+    }
     nextShape = newShape()
   }
   
   //Determines whether there is a block that has a tile 
   //touching the ceiling i.e. whether the game has ended
   def hasEnded = {
-    lockedImages.exists(_.y <= 0)
+    lockedImages.exists(tile => tile.y <= 0 && (tile.x <= 8 || tile.x >= 5))
   }
   
+  def restart() = {
+    this.lockedTiles = Array.ofDim[Int](image.getHeight(), image.getWidth())
+    this.lockedImages = Vector[Tile]()
+    this.score = 0
+    this.rowsRemoved = 0
+    this.currentShape = newShape()
+    this.nextShape = newShape()
+    this.holdShape = None
+  }
   
   
              

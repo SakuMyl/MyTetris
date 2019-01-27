@@ -27,21 +27,19 @@ class Shape(var layout: Array[Array[Int]], val image: BufferedImage) {
     val rowsWithTiles = {
       layout.indices.filter(rowIndex => layout(rowIndex).exists(_ == 1))
     }
-    (leftSide + (rightSide - leftSide) / 2.0, rowsWithTiles.sum.toDouble / rowsWithTiles.size)
+    ((rightSide + leftSide) / 2.0, rowsWithTiles.sum.toDouble / rowsWithTiles.size)
     
   }
   
-//  var tileLayout = Array.ofDim[Tile](layout.size, layout.size)
-  
-//  layout.indices.foreach(y => layout(y).indices.foreach(x => tileLayout(y)(x) = new Tile(image, this.x + x, this.y + y)))
   
   def rotate() = {
     var newLayout = this.layout.transpose.map(_.reverse)
-    newLayout.indices.foreach(y => newLayout(y).indices.foreach(x => 
-    if(newLayout(y)(x) == 1) {
-      if(this.x + x >= 10) this.x -= this.x + x - 10
-      else if(this.x + x <= 1) this.x += 1 - this.x + x  
-    }))
+    newLayout.indices.foreach{y => newLayout(y).indices.foreach{x => 
+      if(newLayout(y)(x) == 1) {
+        if(this.x + x >= 10) this.x -= this.x + x - 10
+        else if(this.x + x <= 1) this.x += 1 - this.x + x  
+      }
+    }}
     this.layout = newLayout
   }
   
