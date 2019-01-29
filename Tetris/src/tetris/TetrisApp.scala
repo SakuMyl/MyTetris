@@ -195,14 +195,24 @@ object TetrisApp extends SimpleSwingApplication {
     startAnimating(32)
   }
 
- 
+  def locationAllowed(layout: Array[Array[Int]], x: Int, y: Int) = {
+    layout.indices.forall {row => layout(row).indices.forall { column =>
+      !lockedImages.exists(tile => tile.x == x + column && tile.y == y + row && layout(row)(column) == 1) 
+    }}
+  }
+  
+  def isOutOfBounds(layout: Array[Array[Int]], x: Int, y: Int) = {
+    layout.indices.exists {row => layout(row).indices.exists { column => 
+      (x + column < 1 || x + column > GridWidth || y + row >= GridHeight) && layout(row)(column) == 1  
+    }}
+  }
   
   def newShape() = {
     val r = Random.nextInt(7)
     new Shape(this.layoutMap(layouts(r)), image.getSubimage(0, r * TileSize, TileSize, TileSize))
   }
   
-  var lockedTiles = Array.ofDim[Int](image.getHeight(), image.getWidth())
+//  var lockedTiles = Array.ofDim[Int](image.getHeight(), image.getWidth())
   
   var lockedImages = Vector[Tile]()
   
@@ -218,13 +228,18 @@ object TetrisApp extends SimpleSwingApplication {
   //currently in hold or a new shape if there's not a block in hold yet.
   def hold() = { 
     val temp = currentShape
+    var newShape = currentShape
     holdShape match {
-      case Some(shape) => currentShape = shape
-      case None => currentShape = newShape()
+      case Some(shape) => 
+        newShape = shape
+      case None => newShape = this.newShape()
     }
-    currentShape.x = math.max(1 + temp.leftSide - currentShape.leftSide, math.min(temp.x, temp.x + temp.rightSide - currentShape.rightSide))
-    currentShape.y = temp.y
-    holdShape = Some(temp)
+    if(locationAllowed(newShape.layout, newShape.x, newShape.y)) {
+      currentShape = newShape
+      currentShape.x = math.max(1 + temp.leftSide - currentShape.leftSide, math.min(temp.x, temp.x + temp.rightSide - currentShape.rightSide))
+      currentShape.y = temp.y
+      holdShape = Some(temp)
+    }
   }
   
   //Gives the player points for removing rows.
@@ -245,7 +260,7 @@ object TetrisApp extends SimpleSwingApplication {
     this.lockedImages.foreach{ tile => 
       if(tile.y == y) {
         lockedImages = lockedImages.filterNot(_ == tile)
-        lockedTiles(tile.y)(tile.x) = 1
+//        lockedTiles(tile.y)(tile.x) = 1
       } else if(tile.y < y) tile.y += 1
     }
   }
@@ -256,7 +271,7 @@ object TetrisApp extends SimpleSwingApplication {
     currentShape.layout.indices.foreach{ y => currentShape.layout(y).indices.foreach {x => 
       if (currentShape.layout(y)(x) == 1) {
         lockedImages = lockedImages ++: Vector(new Tile(currentShape.image, currentShape.x + x, currentShape.y + y))
-        lockedTiles(currentShape.y + y)(currentShape.x + x) = 1
+//        lockedTiles(currentShape.y + y)(currentShape.x + x) = 1
         if(lockedImages.filter(_.y == lockedImages.last.y).size == 10) {
           rows += 1
           deleteRows(lockedImages.last.y)
@@ -278,7 +293,7 @@ object TetrisApp extends SimpleSwingApplication {
   }
   
   def restart() = {
-    this.lockedTiles = Array.ofDim[Int](image.getHeight(), image.getWidth())
+//    this.lockedTiles = Array.ofDim[Int](image.getHeight(), image.getWidth())
     this.lockedImages = Vector[Tile]()
     this.score = 0
     this.rowsRemoved = 0

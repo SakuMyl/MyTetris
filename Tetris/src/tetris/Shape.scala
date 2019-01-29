@@ -38,13 +38,15 @@ class Shape(var layout: Array[Array[Int]], val image: BufferedImage) {
   //Rotates the block counter-clockwise
   def rotate() = {
     var newLayout = this.layout.transpose.map(_.reverse)
-    newLayout.indices.foreach{y => newLayout(y).indices.foreach{x => 
-      if(newLayout(y)(x) == 1) {
-        if(this.x + x >= 10) this.x -= this.x + x - 10
-        else if(this.x + x <= 1) this.x += 1 - this.x + x  
-      }
-    }}
-    this.layout = newLayout
+    if(TetrisApp.locationAllowed(newLayout, this.x, this.y)) {
+      newLayout.indices.foreach{y => newLayout(y).indices.foreach{x => 
+        if(newLayout(y)(x) == 1) {
+          if(this.x + x >= 10)  this.x -= this.x + x - 10
+          else if(this.x + x <= 1) this.x += 1 - this.x + x  
+        }
+      }}
+      this.layout = newLayout
+    }
   }
   
   //Draws all tiles of this block in the graphic component
@@ -58,8 +60,9 @@ class Shape(var layout: Array[Array[Int]], val image: BufferedImage) {
   }
   //Determines whether the block can be moved left
   def canMoveLeft = {
-    layout.indices.forall(y => layout(y).indices.forall(x => 
-    (this.x + x > 1 && !TetrisApp.lockedImages.exists(tile => tile.x == this.x + x - 1 && tile.y == this.y + y)) || layout(y)(x) == 0))
+    TetrisApp.locationAllowed(this.layout, this.x - 1, this.y) && !TetrisApp.isOutOfBounds(this.layout, this.x - 1, this.y)
+//    layout.indices.forall(y => layout(y).indices.forall(x => 
+//    (this.x + x > 1 && !TetrisApp.lockedImages.exists(tile => tile.x == this.x + x - 1 && tile.y == this.y + y)) || layout(y)(x) == 0))
   }
   //Moves the block right, if possible
   def moveRight() = {
@@ -67,20 +70,22 @@ class Shape(var layout: Array[Array[Int]], val image: BufferedImage) {
   }
   //Determines whether the block can be moved right
   def canMoveRight = {
-    layout.indices.forall(y => layout(y).indices.forall(x => 
-    (this.x + x < 10 && !TetrisApp.lockedImages.exists(tile => tile.x == this.x + x + 1 && tile.y == this.y + y)) || this.layout(y)(x) == 0))
+    TetrisApp.locationAllowed(this.layout, this.x + 1, this.y) && !TetrisApp.isOutOfBounds(this.layout, this.x + 1, this.y)
+//    layout.indices.forall(y => layout(y).indices.forall(x => 
+//    (this.x + x < 10 && !TetrisApp.lockedImages.exists(tile => tile.x == this.x + x + 1 && tile.y == this.y + y)) || this.layout(y)(x) == 0))
   }
   //Determines whether the block touches the bottom or other tiles below the block
   def isLocked = {
-    layout.indices.exists(y => layout(y).indices.exists(x => 
-    (this.layout(y)(x) == 1 && TetrisApp.lockedImages.exists(tile => tile.x == this.x + x && tile.y == this.y + y + 1)) || isOnBoundary))
+    !TetrisApp.locationAllowed(this.layout, this.x, this.y + 1) || TetrisApp.isOutOfBounds(this.layout, this.x, this.y + 1)
+//    layout.indices.exists(y => layout(y).indices.exists(x => 
+//    (this.layout(y)(x) == 1 && TetrisApp.lockedImages.exists(tile => tile.x == this.x + x && tile.y == this.y + y + 1)) || isOnBoundary))
   }
   
   //Determines whether the block touches the bottom
-  def isOnBoundary = {
-    this.layout.indices.exists(y => this.layout(y).indices.exists(x => 
-      this.layout(y)(x) == 1 && this.y + y >= TetrisApp.GridHeight - 1))
-  }
+//  def isOnBoundary = {
+//    this.layout.indices.exists(y => this.layout(y).indices.exists(x => 
+//      this.layout(y)(x) == 1 && this.y + y >= TetrisApp.GridHeight - 1))
+//  }
   
   //Moves the block downwards 
   def fall() = this.y += 1
