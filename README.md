@@ -1,2 +1,2 @@
 # MyTetris
-A Tetris game with Scala swing and Java graphic libraries. 
+A Tetris game with Scala swing and Java awt. 
